@@ -10,8 +10,9 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::error::EventLoopError;
 use winit::event::{ElementState, Event, MouseButton, StartCause, WindowEvent};
 use winit::event_loop::{ControlFlow};
+use winit::keyboard::{KeyCode, PhysicalKey};
 
-use crate::universe::Universe;
+use crate::universe_simulator::UniverseSimulator;
 
 // This is the logical size of the window, for winit. The window will actually
 // technically be 4x as many pixels as this, because of hidpi.
@@ -20,9 +21,9 @@ const WIN_SIZE: (u32, u32) = (640, 480);
 // This is the logical size of the Pixels instance. This will get scaled up evenly
 // to match the size of the window, which will get scaled again to match the hidpi
 // factor. Confused yet?
-const PIX_SIZE: (u32, u32) = (640, 480);
+const PIX_SIZE: (u32, u32) = (1800, 900);
 
-pub mod universe;
+pub mod universe_simulator;
 
 fn main() -> Result<(), EventLoopError> {
     // We'll trigger an update and redraw this often. There's no real correct value here,
@@ -60,7 +61,8 @@ fn main() -> Result<(), EventLoopError> {
     };
 
     // The universe
-    let mut universe = Universe::new_middle(22);
+    let mut universe_simulator = UniverseSimulator::new(91989131, pixels.frame_mut(), &window);
+    // let mut universe_simulator = UniverseSimulator::new(0, pixels.frame_mut(), &window);
 
     event_loop.run(move |event, target| {
         match event {
@@ -89,7 +91,7 @@ fn main() -> Result<(), EventLoopError> {
             // When the timer fires, update the world, redraw thw window based on that,
             // and restart the timer
             Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
-                universe.update(pixels.frame_mut());
+                // universe.update(pixels.frame_mut());
                 window.request_redraw();
                 target.set_control_flow(ControlFlow::WaitUntil(Instant::now() + timer_length));
             }
@@ -128,7 +130,17 @@ fn main() -> Result<(), EventLoopError> {
                 println!("{} {:?} ({}repeat)",
                          if event.state.is_pressed() { "Pressed" } else { "Released" },
                          event.logical_key,
-                         if event.repeat { "" } else { "not " })
+                         if event.repeat { "" } else { "not " });
+
+                if event.physical_key == PhysicalKey::Code(KeyCode::ArrowLeft) && event.state.is_pressed() {
+                    universe_simulator.shimmy(-1, pixels.frame_mut(), &window);
+                }
+                if event.physical_key == PhysicalKey::Code(KeyCode::ArrowRight) && event.state.is_pressed() {
+                    universe_simulator.shimmy( 1, pixels.frame_mut(), &window);
+                }
+                if event.physical_key == PhysicalKey::Code(KeyCode::KeyF) && event.state.is_pressed() {
+                    universe_simulator.flip(pixels.frame_mut(), &window);
+                }
             }
 
             // Resize the texture when the window resizes (this will also handle rescaling
