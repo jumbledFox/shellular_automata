@@ -4,10 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-env_logger = "0.11.10"
-error-iter = "0.4.1"
-log = "0.4.29"
-pixels = "0.15.0"
-winit = "0.30.13"
-winit_input_helper = "0.17.0"
-
+pixels = "0.13"
+# You need this junk as of early-2024, because you have to enable rwh_05 which means you need to enable the rest of it manually (the rest is defaults)
+winit = { version = "0.29.9", default-features = false, features = ["x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita", "wayland-csd-adwaita-crossfont", "wayland-csd-adwaita-notitle", "android-native-activity", "android-game-activity", "serde", "rwh_05", "mint"] }

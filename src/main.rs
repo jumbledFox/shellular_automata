@@ -1,163 +1,147 @@
+// I based main.rs on https://github.com/randrews/minimal-pixels/tree/master !!!
+// thank you Ross Andrews!! <3
+
 #![deny(clippy::all)]
 #![forbid(unsafe_code)]
 
-use std::sync::Arc;
+use std::time::{Duration, Instant};
+use pixels::{PixelsBuilder, SurfaceTexture, wgpu};
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::error::EventLoopError;
+use winit::event::{ElementState, Event, MouseButton, StartCause, WindowEvent};
+use winit::event_loop::{ControlFlow};
 
-use error_iter::ErrorIter as _;
-use log::error;
-use pixels::{Error, Pixels, SurfaceTexture};
-use winit::dpi::LogicalSize;
-use winit::event::{Event, WindowEvent};
-use winit::event_loop::EventLoop;
-use winit::keyboard::KeyCode;
-use winit::window::Window;
-use winit_input_helper::WinitInputHelper;
+use crate::universe::Universe;
 
-const WIDTH: u32 = 320;
-const HEIGHT: u32 = 240;
-const BOX_SIZE: i16 = 64;
+// This is the logical size of the window, for winit. The window will actually
+// technically be 4x as many pixels as this, because of hidpi.
+const WIN_SIZE: (u32, u32) = (640, 480);
+
+// This is the logical size of the Pixels instance. This will get scaled up evenly
+// to match the size of the window, which will get scaled again to match the hidpi
+// factor. Confused yet?
+const PIX_SIZE: (u32, u32) = (640, 480);
 
 pub mod universe;
 
-/// Representation of the application state. In this example, a box will bounce around the screen.
-struct World {
-    box_x: i16,
-    box_y: i16,
-    velocity_x: i16,
-    velocity_y: i16,
-}
+fn main() -> Result<(), EventLoopError> {
+    // We'll trigger an update and redraw this often. There's no real correct value here,
+    // it's just how often we want to update the game state (or whatever it is) but there
+    // is a wrong value: it turns out that specifying 15 milliseconds (about 60 hz) will
+    // drastically lengthen the time to draw a frame, due to vsync: rendering the Pixels
+    // will block until the next vsync, and our drawing will take nonzero time, so we'll
+    // end up always arriving late and waiting for the next redraw.
+    let timer_length = Duration::from_millis(20);
 
-fn main() -> Result<(), Error> {
-    env_logger::init();
-    let event_loop = EventLoop::new().unwrap();
-    let mut input = WinitInputHelper::new();
-    let window = {
-        let size = LogicalSize::new(WIDTH as f64, HEIGHT as f64);
-        #[allow(deprecated)]
-        Arc::new(
-            event_loop
-                .create_window(
-                    Window::default_attributes()
-                        .with_title("Hello Pixels")
-                        .with_inner_size(size)
-                        .with_min_inner_size(size),
-                )
-                .unwrap(),
-        )
-    };
+    // winit now makes is track the mouse position ourselves...
+    let mut mouse_pos: (f64, f64) = (-1f64, -1f64);
 
+    // A window needs an event loop
+    let event_loop = winit::event_loop::EventLoop::new().expect("Failed to create event loop!");
+
+    // The window itself. We set a title, size, and a minimum size to restrict resizing.
+    // Resizing up is fine, pixels will scale; resizing down is problematic if we ever
+    // get smaller than the Pixels itself.
+    let window = winit::window::WindowBuilder::new()
+        .with_title("The Thing")
+        .with_inner_size(LogicalSize{ width: WIN_SIZE.0, height: WIN_SIZE.1 })
+        .with_min_inner_size(LogicalSize { width: PIX_SIZE.0, height: PIX_SIZE.1 })
+        .build(&event_loop)?;
+
+    // The Pixels instance. We need a backing surface texture the physical size of the window
+    // (meaning, the real actual physical size, post-hidpi-scaling) and then we can set stuff
+    // on it with a PixelsBuilder:
     let mut pixels = {
-        let window_size = window.inner_size();
-        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(WIDTH, HEIGHT, surface_texture)?
+        let PhysicalSize { width, height } = window.inner_size();
+        let surface_texture = SurfaceTexture::new(width, height, &window);
+        PixelsBuilder::new(PIX_SIZE.0, PIX_SIZE.1, surface_texture)
+            .clear_color(wgpu::Color{ r: 0.1, g: 0.1, b: 0.15, a: 1.0 })
+            .build().expect("Failed to build pixels!")
     };
-    let mut world = World::new();
 
-    #[allow(deprecated)]
-    let res = event_loop.run(|event, elwt| {
+    // The universe
+    let mut universe = Universe::new_middle(22);
+
+    event_loop.run(move |event, target| {
         match event {
-            Event::Resumed => {}
-            Event::NewEvents(_) => input.step(),
-            Event::AboutToWait => input.end_step(),
-            Event::DeviceEvent { event, .. } => {
-                input.process_device_event(&event);
+            // Exit if we click the little x
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                window_id,
+            } if window_id == window.id() => { target.exit(); }
+
+            // Redraw if it's redrawing time
+            Event::WindowEvent {
+                event: WindowEvent::RedrawRequested,
+                window_id,
+            } if window_id == window.id() => {
+                // First redraw stuff into pixels' rgba buffer,
+                // then have pixels draw itself into our scaled offset buffer:
+                // universe.draw(pixels.frame_mut());
+                pixels.render().unwrap()
             }
-            Event::WindowEvent { event, .. } => {
-                // Handle input events
-                if input.process_window_event(&event) {
-                    // Close events
-                    if input.key_pressed(KeyCode::Escape) || input.close_requested() {
-                        elwt.exit();
-                        return;
-                    }
 
-                    // Resize the window
-                    if let Some(size) = input.window_resized()
-                        && size.width > 0
-                        && size.height > 0
-                        && let Err(err) = pixels.resize_surface(size.width, size.height)
-                    {
-                        log_error("pixels.resize_surface", err);
-                        elwt.exit();
-                        return;
-                    }
-                }
+            // Start the timer on init
+            Event::NewEvents(StartCause::Init) => {
+                target.set_control_flow(ControlFlow::WaitUntil(Instant::now() + timer_length));
+            }
 
-                // Draw the current frame
-                if event == WindowEvent::RedrawRequested {
-                    world.draw(pixels.frame_mut());
-                    if let Err(err) = pixels.render() {
-                        log_error("pixels.render", err);
-                        elwt.exit();
-                        return;
-                    }
+            // When the timer fires, update the world, redraw thw window based on that,
+            // and restart the timer
+            Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
+                universe.update(pixels.frame_mut());
+                window.request_redraw();
+                target.set_control_flow(ControlFlow::WaitUntil(Instant::now() + timer_length));
+            }
 
-                    // Update internal state and request a redraw
-                    world.update();
-                    window.request_redraw();
+            // Update that the mouse moved if it did
+            Event::WindowEvent {
+                event: WindowEvent::CursorMoved { position: pos, device_id: _ },
+                window_id
+            } if window_id == window.id() => {
+                // Remember that there are two layers of scaling going on here, and this position
+                // is after both of them: pos is two f64s in physical pixel coordinates.
+                // To get a point in the WIN_SIZE space (in other words, to remove the hidpi
+                // scaling only): pos.to_logical(window.scale_factor());
+                // But it's probably more useful to store the raw physical point because
+                // pixels.window_pos_to_pixel can remove both layers of scaling at once:
+                mouse_pos = (pos.x, pos.y);
+            }
+
+            // Do something if the mouse was clicked
+            Event::WindowEvent {
+                window_id, event: WindowEvent::MouseInput { device_id: _, state: ElementState::Pressed, button: MouseButton::Left }
+            } if window_id == window.id() => {
+                println!("Mouse clicked:");
+                println!("\tPhysical: {}, {}", mouse_pos.0, mouse_pos.1);
+                if let Ok((px, py)) = pixels.window_pos_to_pixel((mouse_pos.0 as f32, mouse_pos.1 as f32)) {
+                    println!("\tPixels: {}, {}", px, py)
+                } else {
+                    println!("\tNot within Pixels space!")
                 }
             }
+
+            // Handle keyboard events
+            Event::WindowEvent {
+                window_id, event: WindowEvent::KeyboardInput { event, .. }
+            } if window_id == window.id() => {
+                println!("{} {:?} ({}repeat)",
+                         if event.state.is_pressed() { "Pressed" } else { "Released" },
+                         event.logical_key,
+                         if event.repeat { "" } else { "not " })
+            }
+
+            // Resize the texture when the window resizes (this will also handle rescaling
+            // the Pixels instance)
+            Event::WindowEvent {
+                window_id, event: WindowEvent::Resized(new_size)
+            } if window_id == window.id() => {
+                println!("Resized to {}, {}", new_size.width, new_size.height);
+                pixels.resize_surface(new_size.width, new_size.height).expect("Resize surface failure")
+            }
+
+            // Drop other events
             _ => {}
         }
-    });
-    res.map_err(|e| Error::UserDefined(Box::new(e)))
-}
-
-fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
-    error!("{method_name}() failed: {err}");
-    for source in err.sources().skip(1) {
-        error!("  Caused by: {source}");
-    }
-}
-
-impl World {
-    /// Create a new `World` instance that can draw a moving box.
-    fn new() -> Self {
-        Self {
-            box_x: 24,
-            box_y: 16,
-            velocity_x: 1,
-            velocity_y: 1,
-        }
-    }
-
-    /// Update the `World` internal state; bounce the box around the screen.
-    fn update(&mut self) {
-        if self.box_x <= 0 || self.box_x + BOX_SIZE > WIDTH as i16 {
-            self.velocity_x *= -1;
-        }
-        if self.box_y <= 0 || self.box_y + BOX_SIZE > HEIGHT as i16 {
-            self.velocity_y *= -1;
-        }
-
-        self.box_x += self.velocity_x;
-        self.box_y += self.velocity_y;
-    }
-
-    /// Draw the `World` state to the frame buffer.
-    ///
-    /// Assumes the default texture format: `wgpu::TextureFormat::Rgba8UnormSrgb`
-    fn draw(&self, frame: &mut [u8]) {
-        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-            let x = (i % WIDTH as usize) as i16;
-            let y = (i / WIDTH as usize) as i16;
-
-            let inside_the_box = x >= self.box_x
-                && x < self.box_x + BOX_SIZE
-                && y >= self.box_y
-                && y < self.box_y + BOX_SIZE;
-
-            let rgba = if inside_the_box {
-                [0x5e, 0x48, 0xe8, 0xff]
-            } else {
-                [0x48, 0xb2, 0xe8, 0xff]
-            };
-
-            if !inside_the_box {
-                continue;
-            }
-
-            pixel.copy_from_slice(&rgba);
-        }
-    }
+    })
 }
