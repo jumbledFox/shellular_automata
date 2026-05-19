@@ -1,6 +1,6 @@
 use rand::{RngExt, rngs::ThreadRng};
 
-use crate::simulator::WORLD_WIDTH;
+use crate::simulator::WORLD_SIZE;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InitMode {
@@ -10,8 +10,8 @@ pub enum InitMode {
 
 // these are crazy universes that check TWO SPACES left and right, not just 1 ..!
 pub struct Universe {
-    cells:   [bool; WORLD_WIDTH],
-    cells_b: [bool; WORLD_WIDTH],
+    cells:   [bool; WORLD_SIZE.0],
+    cells_b: [bool; WORLD_SIZE.0],
     rule: u32,
     //   91989028 - isometric-ish
     //   91989105 - cool branches in organic noise
@@ -19,7 +19,11 @@ pub struct Universe {
     //   91988546 - cool stripes
     //   91988610 - roller coaster tycoon
     //   91988617 - sierpinski park
+    //  901778441 - cubic treetops
     //  631494308 - motherboard
+    // 3011136072 - D.I.P. soup
+    // 1283831243 - overlapper 
+    // 3393188854 - beautiful flowers
     // 4202978740 - puzzle triangles
     // 4202978768 - cool pattern converges
     // 4202978834 - cityblock
@@ -29,25 +33,25 @@ pub struct Universe {
 
 impl Universe {
     pub fn new(rule: u32, init_mode: InitMode, rand: &mut ThreadRng) -> Self {
-        let mut cells = [false; WORLD_WIDTH];
+        let mut cells = [false; WORLD_SIZE.0];
 
         if init_mode == InitMode::Center {
-            cells[WORLD_WIDTH/2] = true;
+            cells[WORLD_SIZE.0/2] = true;
         } else if init_mode == InitMode::Random {
-            for i in 0..WORLD_WIDTH {
+            for i in 0..WORLD_SIZE.0 {
                 cells[i] = rand.random_bool(0.5)
             }
         }
 
         Self {
             cells,
-            cells_b: [false; WORLD_WIDTH],
+            cells_b: [false; WORLD_SIZE.0],
             rule,
             generation: 0,
         }
     }
 
-    pub fn cells(&self) -> &[bool; WORLD_WIDTH] {
+    pub fn cells(&self) -> &[bool; WORLD_SIZE.0] {
         &self.cells
     }
     pub fn generation(&self) -> usize {
@@ -57,11 +61,11 @@ impl Universe {
     pub fn step(&mut self) {
         self.cells_b = self.cells.clone();
         // For each cell, look at its past neighbours
-        for i in 0..WORLD_WIDTH {
+        for i in 0..WORLD_SIZE.0 {
             // rem_euclid for a looping universe
             let index = |offset: isize| -> usize {
                 // TODO: probably a much nicer way to do this...
-                (i as isize + offset).rem_euclid(WORLD_WIDTH as isize) as usize
+                (i as isize + offset).rem_euclid(WORLD_SIZE.0 as isize) as usize
             };
 
             let l2 = index(-2);

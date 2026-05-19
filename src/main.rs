@@ -12,8 +12,9 @@ use winit::event::{ElementState, Event, MouseButton, StartCause, WindowEvent};
 use winit::event_loop::{ControlFlow};
 use winit::keyboard::{Key, KeyCode, NamedKey, PhysicalKey, SmolStr};
 
-use crate::simulator::UniverseSimulator;
-use crate::simulator::universe::InitMode;
+use crate::simulator::Simulator;
+use crate::simulator::custom_wolfram::CustomWolfram;
+use crate::simulator::custom_wolfram::universe::InitMode;
 
 // This is the logical size of the window, for winit. The window will actually
 // technically be 4x as many pixels as this, because of hidpi.
@@ -63,8 +64,10 @@ fn main() -> Result<(), EventLoopError> {
     };
 
     // The universe
-    let mut universe_simulator = UniverseSimulator::new(128056, InitMode::Random, pixels.frame_mut(), &window);
+    // let mut universe_simulator = CustomWolfram::new(3393188854, InitMode::Random, pixels.frame_mut(), &window);
     // let mut universe_simulator = UniverseSimulator::new(0, pixels.frame_mut(), &window);
+
+    let mut simulator: Box<dyn Simulator> = Box::new(CustomWolfram::new(3393188854, InitMode::Random, pixels.frame_mut(), &window));
 
     event_loop.run(move |event, target| {
         match event {
@@ -94,9 +97,7 @@ fn main() -> Result<(), EventLoopError> {
             // and restart the timer
             Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
                 // universe.update(pixels.frame_mut());
-                if universe_simulator.stepping() {
-                    universe_simulator.step_simulation(pixels.frame_mut(), &window);
-                }
+                simulator.update(pixels.frame_mut(), &window);
                 window.request_redraw();
                 target.set_control_flow(ControlFlow::WaitUntil(Instant::now() + timer_length));
             }
@@ -139,15 +140,7 @@ fn main() -> Result<(), EventLoopError> {
                 if !event.state.is_pressed() {
                     return;
                 }
-                match event.logical_key {
-                    Key::Named(NamedKey::Space)  => universe_simulator.toggle_stepping(),
-                    Key::Named(NamedKey::ArrowLeft)  => universe_simulator.shimmy(-1, pixels.frame_mut(), &window),
-                    Key::Named(NamedKey::ArrowRight) => universe_simulator.shimmy( 1, pixels.frame_mut(), &window),
-                    Key::Character(v) if v.to_lowercase() == "q" => universe_simulator.flip(pixels.frame_mut(), &window),
-                    Key::Character(v) if v.to_lowercase() == "e" => universe_simulator.toggle_init_mode(pixels.frame_mut(), &window),
-                    Key::Character(v) if v.to_lowercase() == "r" => universe_simulator.randomize(pixels.frame_mut(), &window),
-                    _ => ()
-                };
+                simulator.keypress(event.logical_key, pixels.frame_mut(), &window);
             }
 
             // Resize the texture when the window resizes (this will also handle rescaling
