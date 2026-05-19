@@ -1,4 +1,4 @@
-use rand::{rng, rngs::ThreadRng};
+use rand::{RngExt, rng, rngs::ThreadRng};
 use winit::window::Window;
 
 use crate::{PIX_SIZE, simulator::universe::{InitMode, Universe}};
@@ -39,6 +39,11 @@ impl UniverseSimulator {
 
     pub fn flip(&mut self, frame: &mut [u8], window: &Window) {
         self.rule = !self.rule;
+        self.remake_universe(frame, window);
+    }
+
+    pub fn randomize(&mut self, frame: &mut [u8], window: &Window) {
+        self.rule = self.rand.random_range(0..u32::MAX);
         self.remake_universe(frame, window);
     }
 

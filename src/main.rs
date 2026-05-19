@@ -63,7 +63,7 @@ fn main() -> Result<(), EventLoopError> {
     };
 
     // The universe
-    let mut universe_simulator = UniverseSimulator::new(91989131, InitMode::Random, pixels.frame_mut(), &window);
+    let mut universe_simulator = UniverseSimulator::new(128056, InitMode::Random, pixels.frame_mut(), &window);
     // let mut universe_simulator = UniverseSimulator::new(0, pixels.frame_mut(), &window);
 
     event_loop.run(move |event, target| {
@@ -143,8 +143,9 @@ fn main() -> Result<(), EventLoopError> {
                     Key::Named(NamedKey::Space)  => universe_simulator.toggle_stepping(),
                     Key::Named(NamedKey::ArrowLeft)  => universe_simulator.shimmy(-1, pixels.frame_mut(), &window),
                     Key::Named(NamedKey::ArrowRight) => universe_simulator.shimmy( 1, pixels.frame_mut(), &window),
-                    Key::Character(v) if v.to_lowercase() == "f" => universe_simulator.flip(pixels.frame_mut(), &window),
-                    Key::Character(v) if v.to_lowercase() == "r" => universe_simulator.toggle_init_mode(pixels.frame_mut(), &window),
+                    Key::Character(v) if v.to_lowercase() == "q" => universe_simulator.flip(pixels.frame_mut(), &window),
+                    Key::Character(v) if v.to_lowercase() == "e" => universe_simulator.toggle_init_mode(pixels.frame_mut(), &window),
+                    Key::Character(v) if v.to_lowercase() == "r" => universe_simulator.randomize(pixels.frame_mut(), &window),
                     _ => ()
                 };
             }
