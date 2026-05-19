@@ -19,6 +19,7 @@ pub struct Universe {
     //   91988546 - cool stripes
     //   91988610 - roller coaster tycoon
     //   91988617 - sierpinski park
+    //  631494308 - motherboard
     // 4202978740 - puzzle triangles
     // 4202978768 - cool pattern converges
     // 4202978834 - cityblock
