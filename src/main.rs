@@ -10,9 +10,10 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::error::EventLoopError;
 use winit::event::{ElementState, Event, MouseButton, StartCause, WindowEvent};
 use winit::event_loop::{ControlFlow};
-use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::keyboard::{Key, KeyCode, NamedKey, PhysicalKey, SmolStr};
 
-use crate::universe_simulator::UniverseSimulator;
+use crate::simulator::UniverseSimulator;
+use crate::simulator::universe::InitMode;
 
 // This is the logical size of the window, for winit. The window will actually
 // technically be 4x as many pixels as this, because of hidpi.
@@ -21,9 +22,10 @@ const WIN_SIZE: (u32, u32) = (640, 480);
 // This is the logical size of the Pixels instance. This will get scaled up evenly
 // to match the size of the window, which will get scaled again to match the hidpi
 // factor. Confused yet?
-const PIX_SIZE: (u32, u32) = (1800, 900);
+const PIX_SIZE: (u32, u32) = (900, 500);
 
-pub mod universe_simulator;
+// pub mod universe_simulator;
+pub mod simulator;
 
 fn main() -> Result<(), EventLoopError> {
     // We'll trigger an update and redraw this often. There's no real correct value here,
@@ -56,12 +58,12 @@ fn main() -> Result<(), EventLoopError> {
         let PhysicalSize { width, height } = window.inner_size();
         let surface_texture = SurfaceTexture::new(width, height, &window);
         PixelsBuilder::new(PIX_SIZE.0, PIX_SIZE.1, surface_texture)
-            .clear_color(wgpu::Color{ r: 0.1, g: 0.1, b: 0.15, a: 1.0 })
+            .clear_color(wgpu::Color{ r: 0.04, g: 0.04, b: 0.04, a: 1.0 })
             .build().expect("Failed to build pixels!")
     };
 
     // The universe
-    let mut universe_simulator = UniverseSimulator::new(91989131, pixels.frame_mut(), &window);
+    let mut universe_simulator = UniverseSimulator::new(91989131, InitMode::Random, pixels.frame_mut(), &window);
     // let mut universe_simulator = UniverseSimulator::new(0, pixels.frame_mut(), &window);
 
     event_loop.run(move |event, target| {
@@ -92,6 +94,9 @@ fn main() -> Result<(), EventLoopError> {
             // and restart the timer
             Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
                 // universe.update(pixels.frame_mut());
+                if universe_simulator.stepping() {
+                    universe_simulator.step_simulation(pixels.frame_mut(), &window);
+                }
                 window.request_redraw();
                 target.set_control_flow(ControlFlow::WaitUntil(Instant::now() + timer_length));
             }
@@ -114,33 +119,34 @@ fn main() -> Result<(), EventLoopError> {
             Event::WindowEvent {
                 window_id, event: WindowEvent::MouseInput { device_id: _, state: ElementState::Pressed, button: MouseButton::Left }
             } if window_id == window.id() => {
-                println!("Mouse clicked:");
-                println!("\tPhysical: {}, {}", mouse_pos.0, mouse_pos.1);
-                if let Ok((px, py)) = pixels.window_pos_to_pixel((mouse_pos.0 as f32, mouse_pos.1 as f32)) {
-                    println!("\tPixels: {}, {}", px, py)
-                } else {
-                    println!("\tNot within Pixels space!")
-                }
+                // println!("Mouse clicked:");
+                // println!("\tPhysical: {}, {}", mouse_pos.0, mouse_pos.1);
+                // if let Ok((px, py)) = pixels.window_pos_to_pixel((mouse_pos.0 as f32, mouse_pos.1 as f32)) {
+                //     println!("\tPixels: {}, {}", px, py)
+                // } else {
+                //     println!("\tNot within Pixels space!")
+                // }
             }
 
             // Handle keyboard events
             Event::WindowEvent {
                 window_id, event: WindowEvent::KeyboardInput { event, .. }
             } if window_id == window.id() => {
-                println!("{} {:?} ({}repeat)",
-                         if event.state.is_pressed() { "Pressed" } else { "Released" },
-                         event.logical_key,
-                         if event.repeat { "" } else { "not " });
-
-                if event.physical_key == PhysicalKey::Code(KeyCode::ArrowLeft) && event.state.is_pressed() {
-                    universe_simulator.shimmy(-1, pixels.frame_mut(), &window);
+                // println!("{} {:?} ({}repeat)",
+                //          if event.state.is_pressed() { "Pressed" } else { "Released" },
+                //          event.logical_key,
+                //          if event.repeat { "" } else { "not " });
+                if !event.state.is_pressed() {
+                    return;
                 }
-                if event.physical_key == PhysicalKey::Code(KeyCode::ArrowRight) && event.state.is_pressed() {
-                    universe_simulator.shimmy( 1, pixels.frame_mut(), &window);
-                }
-                if event.physical_key == PhysicalKey::Code(KeyCode::KeyF) && event.state.is_pressed() {
-                    universe_simulator.flip(pixels.frame_mut(), &window);
-                }
+                match event.logical_key {
+                    Key::Named(NamedKey::Space)  => universe_simulator.toggle_stepping(),
+                    Key::Named(NamedKey::ArrowLeft)  => universe_simulator.shimmy(-1, pixels.frame_mut(), &window),
+                    Key::Named(NamedKey::ArrowRight) => universe_simulator.shimmy( 1, pixels.frame_mut(), &window),
+                    Key::Character(v) if v.to_lowercase() == "f" => universe_simulator.flip(pixels.frame_mut(), &window),
+                    Key::Character(v) if v.to_lowercase() == "r" => universe_simulator.toggle_init_mode(pixels.frame_mut(), &window),
+                    _ => ()
+                };
             }
 
             // Resize the texture when the window resizes (this will also handle rescaling
@@ -148,7 +154,7 @@ fn main() -> Result<(), EventLoopError> {
             Event::WindowEvent {
                 window_id, event: WindowEvent::Resized(new_size)
             } if window_id == window.id() => {
-                println!("Resized to {}, {}", new_size.width, new_size.height);
+                // println!("Resized to {}, {}", new_size.width, new_size.height);
                 pixels.resize_surface(new_size.width, new_size.height).expect("Resize surface failure")
             }
 
