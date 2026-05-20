@@ -11,7 +11,7 @@ pub struct Conway {
     cells:   [Option<[u8; 3]>; WORLD_AREA],
     cells_b: [Option<[u8; 3]>; WORLD_AREA],
     generation: usize,
-    start: bool,
+    stepping: bool,
     rand: ThreadRng,
 }
 
@@ -20,27 +20,31 @@ impl Conway {
         let mut rand = rng();
         let mut cells = [None; WORLD_AREA];
         for (i, c) in cells.iter_mut().enumerate() {
-            if rand.random_bool(0.5) {
+            if rand.random_bool(0.2) {
                 let x = i % WORLD_SIZE.0;
                 let y = i / WORLD_SIZE.0;
-                // *c = match (y > WORLD_SIZE.1/2, x > WORLD_SIZE.0/2) {
-                //     (false, false) => Some([0xff, 0x00, 0x00]),
-                //     (false, true)  => Some([0xff, 0xff, 0xff]),
-                //     (true,  false) => Some([0x00, 0xff, 0x00]),
-                //     (true,  true)  => Some([0x00, 0x00, 0xff]),
-                // };
-                *c = match ((y*32)/WORLD_SIZE.1+(x*32)/WORLD_SIZE.0) % 4 {
-                    0 => Some([0xfc, 0x92, 0xd2]), // pink
-                    2 => Some([0x3e, 0xb8, 0xfa]), // blue
-                    _ => Some([0xff, 0xa8, 0x45]), // orange
-                }
+
+                let inside_middle =
+                   x > WORLD_SIZE.0/4 && x < (WORLD_SIZE.0/4)*3
+                && y > WORLD_SIZE.1/4 && y < (WORLD_SIZE.1/4)*3;
+
+                let quadrant = ((y*32)/WORLD_SIZE.1+(x*32)/WORLD_SIZE.0) % 4;
+
+                *c = match (inside_middle, quadrant) {
+                    (true,  0) |
+                    (true,  2) => Some([0xff, 0x55, 0x55]), // red
+                    (true,  _) => Some([0x55, 0xff, 0x55]), // green
+                    (_, 0) => Some([0xfc, 0x92, 0xd2]), // pink
+                    (_, 2) => Some([0x3e, 0xb8, 0xfa]), // blue
+                    (_, _) => Some([0xff, 0xa8, 0x45]), // orange
+                };
             }
         }
         Self {
             cells,
             cells_b: [None; WORLD_AREA],
             generation: 0,
-            start: false,
+            stepping: false,
             rand
         }
     }
@@ -52,7 +56,7 @@ impl Conway {
 
 impl Simulator for Conway {
     fn update(&mut self, frame: &mut [u8], window: &Window) {
-        if !self.start && self.generation != 0 {
+        if !self.stepping && self.generation != 0 {
             return; 
         }
         self.update_title(window);
@@ -99,16 +103,16 @@ impl Simulator for Conway {
             };
             match cell {
                 Some(c) => pix.clone_from_slice(&[c[0], c[1], c[2], 0xff]),
-                _ => pix[3] -= pix[3] / 3,
+                _ => pix[3] = (pix[3] - pix[3] / 3).max(8),
             }
             self.cells[i] = cell;
         }
         self.generation += 1;
     }
 
-    fn keypress(&mut self, key: Key, frame: &mut [u8], window: &Window) {
+    fn keypress(&mut self, key: Key, _frame: &mut [u8], _window: &Window) {
         if key == Key::Named(NamedKey::Space) {
-            self.start = true;
+            self.stepping = !self.stepping;
         }
     }
 }
