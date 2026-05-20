@@ -60,7 +60,7 @@ fn main() -> Result<(), EventLoopError> {
         let PhysicalSize { width, height } = window.inner_size();
         let surface_texture = SurfaceTexture::new(width, height, &window);
         PixelsBuilder::new(PIX_SIZE.0, PIX_SIZE.1, surface_texture)
-            .clear_color(wgpu::Color{ r: 0.04, g: 0.04, b: 0.04, a: 1.0 })
+            .clear_color(wgpu::Color{ r: 0.0, g: 0.0, b: 0.0, a: 1.0 })
             .build().expect("Failed to build pixels!")
     };
 
