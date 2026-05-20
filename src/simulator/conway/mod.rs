@@ -99,7 +99,7 @@ impl Simulator for Conway {
             };
             match cell {
                 Some(c) => pix.clone_from_slice(&[c[0], c[1], c[2], 0xff]),
-                _ => pix[3] /= 3,
+                _ => pix[3] -= pix[3] / 3,
             }
             self.cells[i] = cell;
         }
