@@ -29,7 +29,7 @@ impl Conway {
                 //     (true,  false) => Some([0x00, 0xff, 0x00]),
                 //     (true,  true)  => Some([0x00, 0x00, 0xff]),
                 // };
-                *c = match ((y*8)/WORLD_SIZE.1+(x*8)/WORLD_SIZE.0) % 4 {
+                *c = match ((y*32)/WORLD_SIZE.1+(x*32)/WORLD_SIZE.0) % 4 {
                     0 => Some([0xfc, 0x92, 0xd2]), // pink
                     2 => Some([0x3e, 0xb8, 0xfa]), // blue
                     _ => Some([0xff, 0xa8, 0x45]), // orange

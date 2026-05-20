@@ -68,8 +68,8 @@ fn main() -> Result<(), EventLoopError> {
     // let mut universe_simulator = CustomWolfram::new(3393188854, InitMode::Random, pixels.frame_mut(), &window);
     // let mut universe_simulator = UniverseSimulator::new(0, pixels.frame_mut(), &window);
 
-    // let mut simulator: Box<dyn Simulator> = Box::new(CustomWolfram::new(3393188854, InitMode::Random, pixels.frame_mut(), &window));
-    let mut simulator: Box<dyn Simulator> = Box::new(Conway::new());
+    let mut simulator: Box<dyn Simulator> = Box::new(CustomWolfram::new(3393188854, InitMode::Random, pixels.frame_mut(), &window));
+    // let mut simulator: Box<dyn Simulator> = Box::new(Conway::new());
 
     event_loop.run(move |event, target| {
         match event {
