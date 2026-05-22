@@ -12,6 +12,7 @@ pub struct Conway {
     cells_b: [Option<[u8; 3]>; WORLD_AREA],
     generation: usize,
     stepping: bool,
+    opaque:   bool,
     rand: ThreadRng,
 }
 
@@ -45,6 +46,7 @@ impl Conway {
             cells_b: [None; WORLD_AREA],
             generation: 0,
             stepping: false,
+            opaque:   false,
             rand
         }
     }
@@ -103,7 +105,8 @@ impl Simulator for Conway {
             };
             match cell {
                 Some(c) => pix.clone_from_slice(&[c[0], c[1], c[2], 0xff]),
-                _ => pix[3] = (pix[3] - pix[3] / 3).max(8),
+                _ if self.opaque => pix[3] = (pix[3].saturating_add(pix[3] / 3)).min(0xe0),
+                _ => pix[3] = (pix[3] - pix[3] / 3).max(0x08),
             }
             self.cells[i] = cell;
         }
@@ -113,6 +116,9 @@ impl Simulator for Conway {
     fn keypress(&mut self, key: Key, _frame: &mut [u8], _window: &Window) {
         if key == Key::Named(NamedKey::Space) {
             self.stepping = !self.stepping;
+        }
+        if key == Key::Named(NamedKey::Tab) {
+            self.opaque = !self.opaque;
         }
     }
 }
