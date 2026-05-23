@@ -12,10 +12,11 @@ use winit::event::{ElementState, Event, MouseButton, StartCause, WindowEvent};
 use winit::event_loop::{ControlFlow};
 use winit::keyboard::{Key, KeyCode, NamedKey, PhysicalKey, SmolStr};
 
+use crate::input::Input;
 use crate::simulator::Simulator;
 use crate::simulator::conway::Conway;
-use crate::simulator::custom_wolfram::CustomWolfram;
-use crate::simulator::custom_wolfram::universe::InitMode;
+// use crate::simulator::custom_wolfram::CustomWolfram;
+// use crate::simulator::custom_wolfram::universe::InitMode;
 
 // This is the logical size of the window, for winit. The window will actually
 // technically be 4x as many pixels as this, because of hidpi.
@@ -24,9 +25,11 @@ const WIN_SIZE: (u32, u32) = (640, 480);
 // This is the logical size of the Pixels instance. This will get scaled up evenly
 // to match the size of the window, which will get scaled again to match the hidpi
 // factor. Confused yet?
-const PIX_SIZE: (u32, u32) = (900, 500);
+// const PIX_SIZE: (u32, u32) = (900, 500);
+const PIX_SIZE: (u32, u32) = (548, 304);
 
 // pub mod universe_simulator;
+pub mod input;
 pub mod simulator;
 
 fn main() -> Result<(), EventLoopError> {
@@ -64,6 +67,7 @@ fn main() -> Result<(), EventLoopError> {
             .build().expect("Failed to build pixels!")
     };
 
+    let mut input = Input::new();
     // The universe
     // let mut universe_simulator = CustomWolfram::new(3393188854, InitMode::Random, pixels.frame_mut(), &window);
     // let mut universe_simulator = UniverseSimulator::new(0, pixels.frame_mut(), &window);
@@ -99,7 +103,8 @@ fn main() -> Result<(), EventLoopError> {
             // and restart the timer
             Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
                 // universe.update(pixels.frame_mut());
-                simulator.update(pixels.frame_mut(), &window);
+                simulator.update(&input, pixels.frame_mut(), &window);
+                input.begin();
                 window.request_redraw();
                 target.set_control_flow(ControlFlow::WaitUntil(Instant::now() + timer_length));
             }
@@ -116,12 +121,30 @@ fn main() -> Result<(), EventLoopError> {
                 // But it's probably more useful to store the raw physical point because
                 // pixels.window_pos_to_pixel can remove both layers of scaling at once:
                 mouse_pos = (pos.x, pos.y);
+                if let Ok((px, py)) = pixels.window_pos_to_pixel((mouse_pos.0 as f32, mouse_pos.1 as f32)) {
+                    input.mouse_move((px, py));
+                } else {
+                    input.mouse_gone();
+                }
+            }
+
+            // if the window got unfocused
+            Event::WindowEvent {
+                event: WindowEvent::Focused(f),
+                window_id
+            } if window_id == window.id() => {
+                if !f {
+                    input.lost_focus();
+                }
             }
 
             // Do something if the mouse was clicked
             Event::WindowEvent {
-                window_id, event: WindowEvent::MouseInput { device_id: _, state: ElementState::Pressed, button: MouseButton::Left }
+                window_id, event: WindowEvent::MouseInput { device_id: _, state, button }
             } if window_id == window.id() => {
+                if let Ok((px, py)) = pixels.window_pos_to_pixel((mouse_pos.0 as f32, mouse_pos.1 as f32)) {
+                    input.mouse_input((px, py), button, state);
+                }
                 // println!("Mouse clicked:");
                 // println!("\tPhysical: {}, {}", mouse_pos.0, mouse_pos.1);
                 // if let Ok((px, py)) = pixels.window_pos_to_pixel((mouse_pos.0 as f32, mouse_pos.1 as f32)) {
@@ -129,6 +152,10 @@ fn main() -> Result<(), EventLoopError> {
                 // } else {
                 //     println!("\tNot within Pixels space!")
                 // }
+                // if let Ok((px, py)) = pixels.window_pos_to_pixel((mouse_pos.0 as f32, mouse_pos.1 as f32)) {
+                //     simulator.mouse_click((px, py), pixels.frame_mut(), &window);
+                // }
+                // input.mouse_click(())
             }
 
             // Handle keyboard events
@@ -142,7 +169,8 @@ fn main() -> Result<(), EventLoopError> {
                 if !event.state.is_pressed() {
                     return;
                 }
-                simulator.keypress(event.logical_key, pixels.frame_mut(), &window);
+                // simulator.keypress(event.logical_key, pixels.frame_mut(), &window);
+                input.keypress(event);
             }
 
             // Resize the texture when the window resizes (this will also handle rescaling
