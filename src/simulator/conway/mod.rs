@@ -17,6 +17,7 @@ pub struct Conway {
     opaque:   bool,
     artist: Artist,
     rand: ThreadRng,
+    shift_counter: usize,
 
     draw_hue: f32,
 }
@@ -74,6 +75,7 @@ impl Conway {
             opaque:   false,
             artist: Artist::new(),
             rand,
+            shift_counter: 0,
 
             draw_hue: 0.0,
         }
@@ -96,44 +98,12 @@ impl Simulator for Conway {
 
         if self.stepping {
             self.artist.update(&mut self.cells, &mut self.rand);
-        }
-
-        /*
-        // drawing with the mouse
-        if let Some(pix) = input.mouse_pos().take_if(|_| input.mouse_held(MouseButton::Left)) {
-            // TODO: Maybe make this a helper function somewhere.. :P
-            let hue_to_rgb = |h: f32| -> [u8; 3] {
-                let min_3 = |a: f32, b: f32, c: f32| -> f32 {
-                    a.min(b.min(c))
-                };
-            
-                let kr = (5.0 + h*6.0) % 6.0;
-                let kg = (3.0 + h*6.0) % 6.0;
-                let kb = (1.0 + h*6.0) % 6.0;
-                let r = 1.0 - min_3(kr, 4.0-kr, 1.0).max(0.0);
-                let g = 1.0 - min_3(kg, 4.0-kg, 1.0).max(0.0);
-                let b = 1.0 - min_3(kb, 4.0-kb, 1.0).max(0.0);
-                [
-                    (r * 255.0) as u8,
-                    (g * 255.0) as u8,
-                    (b * 255.0) as u8,
-                ]
-            };
-
-            let r = 24;
-            for y_offset in -r..=r {
-                for x_offset in -r..=r {
-                    let x = (pix.0 as isize + x_offset).rem_euclid(WORLD_SIZE.0 as isize) as usize;
-                    let y = (pix.1 as isize + y_offset).rem_euclid(WORLD_SIZE.1 as isize) as usize;
-                    self.cells[x + y*WORLD_SIZE.0] = match self.rand.random_bool(0.8) {
-                        true => None,
-                        _ => Some(hue_to_rgb(self.draw_hue)),
-                    };
-                }
+            if self.shift_counter == 0 {
+                self.cells[..].rotate_right(WORLD_SIZE.0);
+                self.shift_counter = self.rand.random_range(16..32);
             }
-
-            self.draw_hue = (self.draw_hue + 0.015).rem_euclid(1.0);
-        }*/
+            self.shift_counter -= 1;
+        }
 
         self.cells_b = self.cells.clone();
         
