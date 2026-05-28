@@ -1,9 +1,11 @@
 use rand::{RngExt, rng, rngs::ThreadRng};
 use winit::{event::MouseButton, keyboard::{Key, NamedKey}, window::Window};
 
-use crate::{input::Input, simulator::{Simulator, WORLD_SIZE}};
+use crate::{input::Input, simulator::{Simulator, WORLD_SIZE, conway::artist::Artist}};
 
 const WORLD_AREA: usize = WORLD_SIZE.0*WORLD_SIZE.1;
+
+mod artist;
 
 // 0b00000000
 // 0b____snnn - three bits for neighbours, s for state
@@ -13,8 +15,10 @@ pub struct Conway {
     generation: usize,
     stepping: bool,
     opaque:   bool,
-    draw_hue: f32,
+    artist: Artist,
     rand: ThreadRng,
+
+    draw_hue: f32,
 }
 
 impl Conway {
@@ -22,6 +26,7 @@ impl Conway {
         let mut rand = rng();
         let mut cells = [None; WORLD_AREA];
         for (i, c) in cells.iter_mut().enumerate() {
+            break;
             if rand.random_bool(0.8) {
                 continue;
             }
@@ -67,8 +72,10 @@ impl Conway {
             generation: 0,
             stepping: false,
             opaque:   false,
+            artist: Artist::new(),
+            rand,
+
             draw_hue: 0.0,
-            rand
         }
     }
 
@@ -87,6 +94,11 @@ impl Simulator for Conway {
             self.opaque = !self.opaque;
         }
 
+        if self.stepping {
+            self.artist.update(&mut self.cells, &mut self.rand);
+        }
+
+        /*
         // drawing with the mouse
         if let Some(pix) = input.mouse_pos().take_if(|_| input.mouse_held(MouseButton::Left)) {
             // TODO: Maybe make this a helper function somewhere.. :P
@@ -121,14 +133,14 @@ impl Simulator for Conway {
             }
 
             self.draw_hue = (self.draw_hue + 0.015).rem_euclid(1.0);
-        }
+        }*/
 
         self.cells_b = self.cells.clone();
         
         // updating and drawing to the screen
         for (i, pix) in frame.chunks_exact_mut(4).enumerate() {
             // if we're stepping through the grid, we want to update all cells and then draw them
-            let cell = if self.stepping {
+            let cell = if self.stepping || input.key_pressed(Key::Character(".".into())) {
                 let x = i % WORLD_SIZE.0;
                 let y = i / WORLD_SIZE.0;
     
@@ -151,7 +163,7 @@ impl Simulator for Conway {
                         if let Some(c) = self.cells_b[x + y * WORLD_SIZE.0] {
                             n += 1;
                             for ci in 0..=2 {
-                                col[ci] += c[ci] as usize; 
+                                col[ci] += (c[ci] as usize).pow(2); 
                             }
                         }
                     }
@@ -159,11 +171,12 @@ impl Simulator for Conway {
     
                 let alive = self.cells_b[i].is_some();
                 // if alive and have two neighbours, stay alive. if dead with three neighbours, become alive.
-                match (alive && (n == 2 || n == 3)) || (!alive && n == 3) {
+                match (alive && (n == 2 || n == 3)) || (!alive && (n == 3)) {
+                // match (alive && (n == 2 || n == 3)) || (!alive && (n == 3 || n == 4)) { // blender
                     true => Some([
-                        (col[0]/n) as u8,
-                        (col[1]/n) as u8,
-                        (col[2]/n) as u8,
+                        (col[0]/n).isqrt() as u8,
+                        (col[1]/n).isqrt() as u8,
+                        (col[2]/n).isqrt() as u8,
                     ]),
                     _    => None,
                 }
@@ -178,7 +191,9 @@ impl Simulator for Conway {
             }
             self.cells[i] = cell;
         }
-        self.generation += 1;
-        self.update_title(window);
+        if self.stepping {
+            self.generation += 1;
+            self.update_title(window);
+        }
     }
 }
