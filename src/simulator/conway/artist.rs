@@ -208,7 +208,7 @@ impl Artist {
         }
         self.palette.step_c();
         let pix = (self.brush_pos.0 as usize, self.brush_pos.1 as usize);
-        let r = 2;
+        let r = 5;
         for y_offset in -r..=r {
             for x_offset in -r..=r {
                 let x = (pix.0 as isize + x_offset).rem_euclid(WORLD_SIZE.0 as isize) as usize;
