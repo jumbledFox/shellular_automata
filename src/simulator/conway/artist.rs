@@ -9,11 +9,13 @@ use rand::{RngExt, random_range, rngs::ThreadRng};
 
 use crate::{PIX_SIZE, simulator::{WORLD_SIZE, conway::WORLD_AREA}};
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum BrushMode {
     Square,
     // Circle,
 }
 
+#[derive(Clone, Copy, Debug)]
 enum State {
     Waiting(f32),
     Lines {
@@ -34,7 +36,7 @@ enum State {
     // TODO: Other shapes, circles, stars, hearts
     // also multiple cursors drawing sine waves and opposing patterns in another colour
 }
-
+#[derive(Clone, Debug)]
 struct Palette {
     c: f32,
     p: usize,
@@ -113,6 +115,7 @@ impl Palette {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Artist {
     brush_pos: (f32, f32),
     brush_mode: BrushMode,
