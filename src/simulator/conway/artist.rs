@@ -69,6 +69,9 @@ impl Palette {
         palettes.push(vec![ // https://lospec.com/palette-list/blk-aqu4
             0x9ff4e5, 0x00b9be, 0x005f8c
         ]);
+        palettes.push(vec![ // https://lospec.com/palette-list/vividmemory8
+            0x381631, 0xe21c61, 0xe26159, 0xfea85f, 0xd8dcb4, 0x5eb6ad, 0x1b958d, 0x105390
+        ]);
 
         Self { c: 0.0, p: 0, palettes }
     }
