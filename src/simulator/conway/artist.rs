@@ -83,10 +83,14 @@ impl Palette {
         self.c = 0.0;
     }
 
-    pub fn color(&self) -> [u8; 3] {
-        let c = &self.palettes[self.p];
+    pub fn color(&self, offset: isize) -> [u8; 3] {
+        let c = &self.palettes[self.p.wrapping_add_signed(offset).clamp(0, self.palettes.len()-1)];
 
-        let i1 = self.c.floor() as usize;
+        // let i1 = self.c.floor() as usize;
+        // let i1 = (self.c / c.len() as f32).floor() as usize * c.len();
+        // let i2 = (i1 + 1).rem_euclid(c.len());
+
+        let i1 = ((self.c / c.len() as f32).floor() as usize).rem_euclid(c.len());
         let i2 = (i1 + 1).rem_euclid(c.len());
 
         let unpackrgb = |d: u32| -> [f32; 3] {
@@ -109,9 +113,9 @@ impl Palette {
     }
 
     pub fn step_c(&mut self) {
-        let c = &self.palettes[self.p];
-        let len = c.len() as f32;
-        self.c = (self.c + (6.0 / 60.0)).rem_euclid(len);
+        // let c = &self.palettes[self.p];
+        // let len = c.len() as f32;
+        self.c += 64.0 / 60.0;
     }
 }
 
@@ -164,6 +168,20 @@ impl Artist {
         self.palette.init(rand);
     }
 
+    fn draw_brush(&self, center: (usize, usize), color: [u8; 3], cells: &mut [Option<[u8; 3]>; WORLD_AREA], rand: &mut ThreadRng) {
+        let r = 5;
+        for y_offset in -r..=r {
+            for x_offset in -r..=r {
+                let x = (center.0 as isize + x_offset).rem_euclid(WORLD_SIZE.0 as isize) as usize;
+                let y = (center.1 as isize + y_offset).rem_euclid(WORLD_SIZE.1 as isize) as usize;
+                cells[x + y*WORLD_SIZE.0] = match rand.random_bool(0.8) {
+                    true => None,
+                    _ => Some(color),
+                };
+            }
+        }
+    }
+
     pub fn update(&mut self, cells: &mut [Option<[u8; 3]>; WORLD_AREA], rand: &mut ThreadRng) {
         // updating
         let mut drawing = true;
@@ -213,17 +231,9 @@ impl Artist {
             return;
         }
         self.palette.step_c();
-        let pix = (self.brush_pos.0 as usize, self.brush_pos.1 as usize);
-        let r = 5;
-        for y_offset in -r..=r {
-            for x_offset in -r..=r {
-                let x = (pix.0 as isize + x_offset).rem_euclid(WORLD_SIZE.0 as isize) as usize;
-                let y = (pix.1 as isize + y_offset).rem_euclid(WORLD_SIZE.1 as isize) as usize;
-                cells[x + y*WORLD_SIZE.0] = match rand.random_bool(0.8) {
-                    true => None,
-                    _ => Some(self.palette.color()),
-                };
-            }
-        }
+        let a = (self.brush_pos.0 as usize, self.brush_pos.1 as usize);
+        let b = (WORLD_SIZE.0 - self.brush_pos.0 as usize, WORLD_SIZE.1 - self.brush_pos.1 as usize);
+        self.draw_brush(a, self.palette.color(0), cells, rand);
+        self.draw_brush(b, self.palette.color(3), cells, rand);
     }
 }

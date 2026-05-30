@@ -15,7 +15,7 @@ pub struct Conway {
     generation: usize,
     stepping: bool,
     opaque:   bool,
-    artist: [Artist; 8],
+    artist: Artist,
     rand: ThreadRng,
     shift_counter: usize,
 
@@ -73,7 +73,7 @@ impl Conway {
             generation: 0,
             stepping: false,
             opaque:   false,
-            artist: (0..8).map(|_| Artist::new()).collect::<Vec<Artist>>().try_into().unwrap(),
+            artist: Artist::new(),
             rand,
             shift_counter: 0,
 
@@ -97,9 +97,7 @@ impl Simulator for Conway {
         }
 
         if self.stepping {
-            for a in &mut self.artist {
-                a.update(&mut self.cells, &mut self.rand);
-            }
+            self.artist.update(&mut self.cells, &mut self.rand);
             if self.shift_counter == 0 {
                 self.cells[..].rotate_right(WORLD_SIZE.0.saturating_add_signed(self.rand.random_range(-1..=1) as isize));
                 self.shift_counter = self.rand.random_range(16..24);
