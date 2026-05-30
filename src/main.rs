@@ -51,7 +51,7 @@ fn main() -> Result<(), EventLoopError> {
     // Resizing up is fine, pixels will scale; resizing down is problematic if we ever
     // get smaller than the Pixels itself.
     let window = winit::window::WindowBuilder::new()
-        .with_title("The Thing")
+        .with_title(" ")
         .with_inner_size(LogicalSize{ width: WIN_SIZE.0, height: WIN_SIZE.1 })
         .with_min_inner_size(LogicalSize { width: PIX_SIZE.0, height: PIX_SIZE.1 })
         .build(&event_loop)?;
@@ -73,7 +73,7 @@ fn main() -> Result<(), EventLoopError> {
     // let mut universe_simulator = UniverseSimulator::new(0, pixels.frame_mut(), &window);
 
     // let mut simulator: Box<dyn Simulator> = Box::new(CustomWolfram::new(3393188854, InitMode::Random, pixels.frame_mut(), &window));
-    let mut simulator: Box<dyn Simulator> = Box::new(Conway::new(pixels.frame_mut()));
+    let mut simulator: Box<dyn Simulator> = Box::new(Conway::new(&window));
 
     event_loop.run(move |event, target| {
         match event {

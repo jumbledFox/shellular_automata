@@ -23,66 +23,25 @@ pub struct Conway {
 }
 
 impl Conway {
-    pub fn new(frame: &mut [u8]) -> Self {
-        let mut rand = rng();
-        let mut cells = [None; WORLD_AREA];
-        for (i, c) in cells.iter_mut().enumerate() {
-            break;
-            if rand.random_bool(0.8) {
-                continue;
-            }
-            let x = i % WORLD_SIZE.0;
-            let y = i / WORLD_SIZE.0;
-
-            let inside_middle =
-               x > WORLD_SIZE.0/4 && x < (WORLD_SIZE.0/4)*3
-            && y > WORLD_SIZE.1/4 && y < (WORLD_SIZE.1/4)*3;
-
-            let quadrant = ((y*32)/WORLD_SIZE.1+(x*32)/WORLD_SIZE.0) % 4;
-
-            let border = match
-               x <= 20 || x >= WORLD_SIZE.0-20
-            || y <= 20 || y >= WORLD_SIZE.1-20 {
-                true => Some(y % 2),
-                _ => None,
-            };
-
-            *c = match (border, inside_middle, quadrant) {
-                // (_, _, 0) | (.., 2) => Some([0xff, 0x44, 0x44]), // red
-                // (_, _, _) => Some([0x44, 0x44, 0xff]), // blue
-                (Some(0), ..) => Some([0x67, 0x67, 0xff]),
-                (Some(1), ..) => Some([0xff, 0xff, 0xff]),
-                (_, true,  0) |
-                (_, true,  2) => Some([0xff, 0x55, 0x55]), // red
-                (_, true,  _) => Some([0x55, 0xff, 0x55]), // green
-                (_, _, 0)     => Some([0xfc, 0x92, 0xd2]), // pink
-                (_, _, 2)     => Some([0x3e, 0xb8, 0xfa]), // blue
-                (_, _, _)     => Some([0xff, 0xa8, 0x45]), // orange
-            };
-        }
-
-        for (i, pix) in frame.chunks_exact_mut(4).enumerate() {
-            if let Some(c) = cells[i] {
-                pix.clone_from_slice(&[c[0], c[1], c[2], 0xff]);
-            }
-        }
+    pub fn new(window: &Window) -> Self {
+        Self::update_title(window, 0);
 
         Self {
-            cells,
+            cells:   [None; WORLD_AREA],
             cells_b: [None; WORLD_AREA],
             generation: 0,
             stepping: false,
             opaque:   false,
             artist: Artist::new(),
-            rand,
+            rand: rng(),
             shift_counter: 0,
 
             draw_hue: 0.0,
         }
     }
 
-    fn update_title(&self, window: &Window) {
-        window.set_title(&format!("silly funny colour conways - generation {:?}", self.generation));
+    fn update_title(window: &Window, generation: usize) {
+        window.set_title(&format!("colour drawing conways - generation {:?} - made by jumbledFox :3", generation));
     }
 }
 
@@ -163,7 +122,7 @@ impl Simulator for Conway {
         }
         if self.stepping {
             self.generation += 1;
-            self.update_title(window);
+            Self::update_title(window, self.generation);
         }
     }
 }

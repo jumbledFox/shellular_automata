@@ -161,7 +161,7 @@ impl Artist {
                 len: 0.0,
                 max_len: random_range(800.0..1400.0),
                 frequency: rand.random_range(0.005..0.06),
-                amplitude: rand.random_range(50.0..160.0),
+                amplitude: rand.random_range(50.0..120.0),
             }
         };
 
@@ -209,7 +209,7 @@ impl Artist {
                 }
             }
             State::Sine { origin, rot, len, frequency, amplitude, max_len } => {
-                let s = 3.0;
+                let s = 2.0;
                 *len += s;
                 let x = origin.0 + *len;
                 let y = origin.1 + (*len * *frequency).sin() * (*amplitude);
